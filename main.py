@@ -7,7 +7,7 @@ def main():
 	mem = memory.Memory(max_size=10000)
 	env = game.Game()
 	model = dqn.DQN(env)
-	env.play_game(mem, model, games=3)
+	env.play_game(mem, model, games=1)
 
 
 if __name__ == "__main__":

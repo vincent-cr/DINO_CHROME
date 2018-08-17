@@ -3,11 +3,11 @@ import numpy as np
 
 class DQN:
 	def __init__(self, game, name='DQN'):
-		self.learning_rate = 0.01
+		self.learning_rate = 0.0002
 		self.state_size = game.state_size
 		self.action_size = game.action_size
 		self.possible_actions = game.possible_actions
-		self.gamma = 0.99
+		self.gamma = 0.95
 
 
 		with tf.variable_scope(name):
@@ -29,10 +29,14 @@ class DQN:
 										  kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
 										  name="conv1")
 
-			self.conv1_out = tf.nn.elu(self.conv1, name="conv1_out")
+			self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
+
+
+			# MAX POOL
+			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 5, 5, 1], [1, 2, 2, 1], padding='SAME', name="max_pool")
 
 			# CONV2
-			self.conv2 = tf.layers.conv2d(inputs=self.conv1_out,
+			self.conv2 = tf.layers.conv2d(inputs=self.max_pool1,
 										  filters=64,
 										  kernel_size=[4, 4],
 										  strides=[2, 2],
@@ -40,24 +44,25 @@ class DQN:
 										  kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
 										  name="conv2")
 
-			self.conv2_out = tf.nn.elu(self.conv2, name="conv2_out")
+			self.conv2_out = tf.nn.relu(self.conv2, name="conv2_out")
+
 
 			# CONV3
-			self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
+			self.conv3 = tf.layers.conv2d(inputs=self.self.conv2_out,
 										  filters=64,
 										  kernel_size=[3, 3],
-										  strides=[2, 2],
+										  strides=[1, 1],
 										  padding="VALID",
 										  kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
 										  name="conv3")
 
-			self.conv3_out = tf.nn.elu(self.conv3, name="conv3_out")
+			self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
 
 			self.flatten = tf.contrib.layers.flatten(self.conv3_out)
 
 			self.fc = tf.layers.dense(inputs=self.flatten,
 									  units=512,
-									  activation=tf.nn.elu,
+									  activation=tf.nn.relu,
 									  kernel_initializer=tf.contrib.layers.xavier_initializer(),
 									  name="fc1")
 
@@ -97,8 +102,6 @@ class DQN:
 
 		target_Qs_batch = []
 
-		# Setup TensorBoard Writer# Setup
-		#writer = tf.summary.FileWriter("/tensorboard/dqn/1")
 
 		## Losses
 		tf.summary.scalar("Loss", self.loss)
@@ -128,12 +131,6 @@ class DQN:
 									  self.actions_: actions_mb})
 		print(loss)
 
-		# Write TF Summaries
-		#summary = sess.run(write_op, feed_dict={self.inputs_: states_mb,
-		#										self.target_Q: targets_mb,
-		#										self.actions_: actions_mb})
-		#writer.add_summary(summary, episode)
-		#writer.flush()
 
 
 

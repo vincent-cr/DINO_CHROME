@@ -27,9 +27,10 @@ class Game():
         self.state_size = [80, 80, 4]
         self.action_size = 2
         self.possible_actions = np.array(np.identity(self.action_size,dtype=int).tolist())
-        self.exploration_rate = 0.30
+        self.exploration_rate = 1.
+        self.explore_decay = 0.9997
         self.min_exploration_rate = 0.02
-        self.skip_frames = 16
+        self.skip_frames = 8
 
         game_over_eval_black = np.load("game_over_black.npy")
         game_over_eval_white = np.load("game_over_white.npy")
@@ -42,7 +43,7 @@ class Game():
         self.game_count = 1
 
         # ROI 75% horizontal
-        self.roi = CG.CGRectMake(10, 140, 640*0.75, 140)
+        self.roi = CG.CGRectMake(10, 140, 640*0.70, 140)
 
         # Take a screenshot to make sure the window is on the front
         self.driver.get_screenshot_as_png()
@@ -82,17 +83,26 @@ class Game():
     def img_process(self, img):
         # From  (row, col, ch) to (row, col)
         img_grey = img.mean(axis=-1, keepdims=0)
+        img_copy = img_grey
 
         # Evaluate if game is over
         self.eval_game_over(img_grey)
 
+        # Filter out unharmfull obstacles ( light grey)
+        img_grey[img_copy > 200] = 255.
+        img_grey[img_copy < 200] = 0.
+
+        # Convert to B&W, where black gets higher values (for maxpooling)
+        img_bw = np.where(img_grey > 200, 0., 1.)
+
         # Downsample image
-        img_resized = transform.resize(img_grey, [80, 80])
+        img_resized = transform.resize(img_bw, [80, 80])
 
-        # Convert to B&W
-        img_bw = np.where(img_resized > np.mean(img_resized), 1, 0)
+        #plt.imshow(img_resized, cmap=plt.cm.Greys_r)
+        #plt.show()
 
-        return img_bw
+
+        return img_resized
 
 
     def stack_img(self, img):
@@ -126,10 +136,10 @@ class Game():
                 reward = -100
             # If jump
             elif prev_action == 1:
-                reward = -10
+                reward = -4
             # If not jump
             elif prev_action == 0:
-                reward = 10
+                reward = 1
 
         else:
             reward = 0
@@ -146,7 +156,7 @@ class Game():
         if not self.is_game_over:
 
             # If explore
-            if is_exploration < self.exploration_rate:
+            if is_exploration < max(self.exploration_rate, self.min_exploration_rate):
                 # 50% chance to jump, 50% chance to run
                 if np.random.random_sample() > 0.5:
                     self.actions.perform()
@@ -158,7 +168,7 @@ class Game():
                 action_array = self.possible_actions[action]
 
             # If not explore
-            if is_exploration >= self.exploration_rate:
+            if is_exploration >= max(self.exploration_rate, self.min_exploration_rate):
                 if predicted_action == 1:
                     action = 1
                     self.actions.perform()
@@ -175,8 +185,7 @@ class Game():
             action_array = self.possible_actions[action]
             action_info = "NO ACTION\t\t\t\t"
 
-        if self.exploration_rate >= self.min_exploration_rate:
-            self.exploration_rate -= 0.000001
+        self.exploration_rate *= self.explore_decay
 
         return action, action_array, action_info
 
@@ -237,7 +246,7 @@ class Game():
                             self.step += 1
 
                             # Print step summary
-                            print(action_info, "Game over: {}".format(self.is_game_over), "\t", round(Q[0][0], 2), "\t",  round(Q[0][1], 2))
+                            print(action_info, "Game over: {}".format(self.is_game_over), "\t", round(Q[0][0], 3), "\t",  round(Q[0][1], 3), "\t reward: {}".format(reward))
 
                             # If gameover
                             if self.is_game_over:
@@ -249,10 +258,11 @@ class Game():
 
                                 # Reset game
                                 self.reset_game()
-                                time.sleep(2)
+                                time.sleep(0.5)
                                 break
 
                 # Train
                 print("\n... TRAING MODEL ... \n")
-                if training_mode:
-                    model.train(memory, sess)
+                for i in range(20):
+                    if training_mode:
+                        model.train(memory, sess)
