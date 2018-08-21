@@ -1,0 +1,5 @@
+model_checkpoint_path: "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/dino.ckpt-400"
+all_model_checkpoint_paths: "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/dino.ckpt-100"
+all_model_checkpoint_paths: "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/dino.ckpt-200"
+all_model_checkpoint_paths: "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/dino.ckpt-300"
+all_model_checkpoint_paths: "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/dino.ckpt-400"

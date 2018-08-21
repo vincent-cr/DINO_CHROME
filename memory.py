@@ -3,9 +3,11 @@ from collections import deque
 
 
 class Memory():
-	def __init__(self, max_size=1000, batch_size=32):
+	def __init__(self, max_size=2000, batch_size=32):
 		self.buffer = deque(maxlen=max_size)
 		self.batch_size = batch_size
+
+		print("Memory created...\n")
 
 
 	def add(self, experience):
@@ -43,5 +45,7 @@ class Memory():
 		batch_size = self.batch_size
 		buffer_size = len(self.buffer)
 		index = np.random.choice(np.arange(buffer_size), size=min(self.batch_size, len(self.buffer)), replace=False)
+		# Add last 6 states before game over
+		index = [*index, *range(-6, 0)]
 
 		return [self.buffer[i] for i in index]

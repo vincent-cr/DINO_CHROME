@@ -16,61 +16,31 @@ class Game():
 
     def __init__(self):
         self.driver = webdriver.Chrome(executable_path="/Users/Vincent/PycharmProjects/IAM_dino/v2/chromedriver")
-        self.driver.set_network_conditions(offline=True, latency=5, throughput=100)
+        self.driver.set_network_conditions(offline=True, latency=1, throughput=100)
         self.driver.get('http://www.python.org/')
         self.driver.set_window_rect(x=0, y=0, width=640, height=320)
-
         self.element = self.driver.find_element_by_id("main-content")
-
         self.actions = ActionChains(self.driver)
         self.actions.send_keys(Keys.ARROW_UP)
+
         self.state_size = [80, 80, 4]
         self.action_size = 2
         self.possible_actions = np.array(np.identity(self.action_size,dtype=int).tolist())
         self.exploration_rate = 1.
-        self.explore_decay = 0.9997
-        self.min_exploration_rate = 0.02
-        self.skip_frames = 8
-
-        game_over_eval_black = np.load("game_over_black.npy")
-        game_over_eval_white = np.load("game_over_white.npy")
-        self.game_over_state = [game_over_eval_black, game_over_eval_white]
+        self.explore_decay = 0.997
+        self.min_exploration_rate = 0.01
+        self.skip_frames = 25
+        self.episodes = 1
 
         self.is_game_over = False
-        self.seq_frames = deque(maxlen=4)
         self.episode_frames_counter = -1
         self.step = 0
         self.game_count = 1
 
-        # ROI 75% horizontal
-        self.roi = CG.CGRectMake(10, 140, 640*0.70, 140)
+        print("Environment created...\n")
 
         # Take a screenshot to make sure the window is on the front
         self.driver.get_screenshot_as_png()
-
-
-    def grab_img(self):
-
-        img = CG.CGWindowListCreateImage(
-                self.roi,
-                CG.kCGWindowListOptionOnScreenOnly,
-                CG.kCGNullWindowID,
-                CG.kCGWindowImageDefault)
-
-        pixeldata = CG.CGDataProviderCopyData(CG.CGImageGetDataProvider(img))
-        width = CG.CGImageGetWidth(img)
-        height = CG.CGImageGetHeight(img)
-        bytesperrow = CG.CGImageGetBytesPerRow(img)
-        img_mat = np.frombuffer(pixeldata, dtype=np.uint8).reshape((height, bytesperrow // 4, 4))
-
-        return img_mat[:, :width, :]
-
-
-    def eval_game_over(self, img):
-        for condition in self.game_over_state:
-            if np.array_equal(img[168:225, 590:647], condition):
-                self.is_game_over = True
-
 
 
     def reset_game(self):
@@ -78,50 +48,6 @@ class Game():
         self.episode_frames_counter = -1
         self.is_game_over = False
         self.game_count += 1
-
-
-    def img_process(self, img):
-        # From  (row, col, ch) to (row, col)
-        img_grey = img.mean(axis=-1, keepdims=0)
-        img_copy = img_grey
-
-        # Evaluate if game is over
-        self.eval_game_over(img_grey)
-
-        # Filter out unharmfull obstacles ( light grey)
-        img_grey[img_copy > 200] = 255.
-        img_grey[img_copy < 200] = 0.
-
-        # Convert to B&W, where black gets higher values (for maxpooling)
-        img_bw = np.where(img_grey > 200, 0., 1.)
-
-        # Downsample image
-        img_resized = transform.resize(img_bw, [80, 80])
-
-        #plt.imshow(img_resized, cmap=plt.cm.Greys_r)
-        #plt.show()
-
-
-        return img_resized
-
-
-    def stack_img(self, img):
-
-        # If first frame, we stack the deque with 4 identical frames
-        if self.episode_frames_counter == 0:
-            self.seq_frames.append(img)
-            self.seq_frames.append(img)
-            self.seq_frames.append(img)
-            self.seq_frames.append(img)
-
-        # Else, we append only the current frame
-        else:
-            self.seq_frames.append(img)
-
-        # We stack the 4 consecutive frames into a 80x80x4 matrice
-        stacked_frames = np.stack(self.seq_frames, axis=2)
-
-        return stacked_frames
 
 
     def get_reward(self, memory):
@@ -190,26 +116,34 @@ class Game():
         return action, action_array, action_info
 
 
-    def play_game(self, memory, model, games=7, training_mode=True):
+    def play_game(self, memory, model, processor, training_mode=True):
 
         # Initialize tf session
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             tf.logging.set_verbosity(tf.logging.INFO)
 
+            # Save model
+            tf.saved_model.simple_save(
+                    sess,
+                    inputs={"x":model.inputs_, "y":model.target_Q},
+                    outputs={"z":model.Q},
+                    export_dir=model.dir_saved_model,
+                    legacy_init_op=None)
+
             # Play all games
             while True:
-                for i in range(games):
+                for i in range(self.episodes):
                     # Start game
                     self.actions.perform()
                     print("START GAME {}".format(self.game_count))
                     time.sleep(0.5)
-                    t_start = datetime.now()
+                    t_start = time.time()
 
                     while True:
 
                         # Capture raw frame
-                        img = self.grab_img()
+                        img = processor.img_grab()
 
                         # Update the frame counter (for this episode)
                         self.episode_frames_counter += 1
@@ -218,10 +152,10 @@ class Game():
                         if self.episode_frames_counter % self.skip_frames == 0:
 
                             # Process image & update is_game_over
-                            img_processed = self.img_process(img)
+                            img_processed = processor.img_process(img, self)
 
                             # Stack images
-                            state = self.stack_img(img_processed)
+                            state = processor.img_stack(img_processed, self)
 
                             # Predict action
                             predicted_action, Q = model.predict_action(state, sess)
@@ -246,15 +180,15 @@ class Game():
                             self.step += 1
 
                             # Print step summary
-                            print(action_info, "Game over: {}".format(self.is_game_over), "\t", round(Q[0][0], 3), "\t",  round(Q[0][1], 3), "\t reward: {}".format(reward))
+                            print(action_info, "Game over: {}".format(self.is_game_over), "\t\t", round(Q[0][0], 3), "\t",  round(Q[0][1], 3), "\t\t reward: {}".format(reward))
 
                             # If gameover
                             if self.is_game_over:
 
-                                t_end = datetime.now()
-                                t_game = t_end - t_start
+                                t_end = time.time()
+                                t_game = round((t_end - t_start) % 60, 3)
 
-                                print("GAME OVER", "-", "Game {}".format(self.game_count), "-", "Game duration: {}\n".format(t_game))
+                                print("GAME OVER", "-", "Game {}".format(self.game_count), "-", "Game duration: {} s.\n".format(t_game))
 
                                 # Reset game
                                 self.reset_game()
@@ -266,3 +200,9 @@ class Game():
                 for i in range(20):
                     if training_mode:
                         model.train(memory, sess)
+
+                # Save checkpoints every 100 games
+                if self.game_count % 100 == 0:
+                    model.save(sess, self.game_count)
+
+

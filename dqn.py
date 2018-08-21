@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+from datetime import datetime
 
 class DQN:
 	def __init__(self, game, name='DQN'):
@@ -8,7 +9,8 @@ class DQN:
 		self.action_size = game.action_size
 		self.possible_actions = game.possible_actions
 		self.gamma = 0.95
-
+		self.dir_saved_checkpoints = "/Users/Vincent/PycharmProjects/IAM_dino/v2/checkpoints/"
+		self.dir_saved_model = "/Users/Vincent/PycharmProjects/IAM_dino/v2/model/" + str(datetime.now())
 
 		with tf.variable_scope(name):
 
@@ -48,7 +50,7 @@ class DQN:
 
 
 			# CONV3
-			self.conv3 = tf.layers.conv2d(inputs=self.self.conv2_out,
+			self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
 										  filters=64,
 										  kernel_size=[3, 3],
 										  strides=[1, 1],
@@ -57,6 +59,7 @@ class DQN:
 										  name="conv3")
 
 			self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
+
 
 			self.flatten = tf.contrib.layers.flatten(self.conv3_out)
 
@@ -74,11 +77,15 @@ class DQN:
 			# Q is our predicted Q value.
 			self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_))
 
-			# The loss is the difference between our predicted Q_values and the Q_target
-			# Sum(Qtarget - Q)^2
+			# The loss is the difference between our predicted Q_values and the Q_target Sum(Qtarget - Q)^2
 			self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q))
 
 			self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+
+			# Init saver
+			self.saver = tf.train.Saver()
+
+			print("Model created...\n")
 
 
 	def predict_action(self, state, sess):
@@ -103,11 +110,6 @@ class DQN:
 		target_Qs_batch = []
 
 
-		## Losses
-		tf.summary.scalar("Loss", self.loss)
-
-		#write_op = tf.summary.merge_all()
-
 		# Get Q values for next_state
 		Qs_next_state = sess.run(self.output, feed_dict={self.inputs_: next_states_mb})
 
@@ -130,6 +132,15 @@ class DQN:
 									  self.target_Q: targets_mb,
 									  self.actions_: actions_mb})
 		print(loss)
+
+
+	def save(self, session, count):
+		self.saver.save(session, self.dir_saved_checkpoints + "dino.ckpt", global_step=count)
+		print("...Model saved...")
+
+	def load(self, session, checkpoint_name):
+		self.saver.restore(session, checkpoint_name)
+		print("Model loaded:", checkpoint_name)
 
 
 
