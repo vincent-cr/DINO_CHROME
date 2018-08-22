@@ -13,7 +13,7 @@ class Processor():
 	def __init__(self):
 
 		# ROI 75% horizontal
-		self.roi_horizontal = 0.60
+		self.roi_horizontal = 0.55
 		self.roi = CG.CGRectMake(10, 140, 640 * self.roi_horizontal, 140)
 		self.seq_frames = deque(maxlen=4)
 
@@ -79,6 +79,7 @@ class Processor():
 		stacked_frames = np.stack(self.seq_frames, axis=2)
 
 		return stacked_frames
+
 
 	def eval_game_over(self, img, game):
 		for condition in self.game_over_state:

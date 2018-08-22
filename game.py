@@ -28,8 +28,8 @@ class Game():
         self.possible_actions = np.array(np.identity(self.action_size,dtype=int).tolist())
         self.exploration_rate = 1.
         self.explore_decay = 0.997
-        self.min_exploration_rate = 0.01
-        self.skip_frames = 25
+        self.min_exploration_rate = 0.02
+        self.skip_frames = 4
         self.episodes = 1
 
         self.is_game_over = False
@@ -62,7 +62,7 @@ class Game():
                 reward = -100
             # If jump
             elif prev_action == 1:
-                reward = -4
+                reward = -1
             # If not jump
             elif prev_action == 0:
                 reward = 1
@@ -186,9 +186,9 @@ class Game():
                             if self.is_game_over:
 
                                 t_end = time.time()
-                                t_game = round((t_end - t_start) % 60, 3)
+                                t_game = round((t_end - t_start) % 60, 2)
 
-                                print("GAME OVER", "-", "Game {}".format(self.game_count), "-", "Game duration: {} s.\n".format(t_game))
+                                print("GAME OVER", "-", "Game {}".format(self.game_count), "-", "Game duration: {} s.\n".format(t_game), "\t Memory size: {}".format(len(memory.buffer)))
 
                                 # Reset game
                                 self.reset_game()
@@ -197,12 +197,20 @@ class Game():
 
                 # Train
                 print("\n... TRAING MODEL ... \n")
-                for i in range(20):
+                if self.game_count <= 70:
+                    steps = 40
+                else:
+                    steps = 20
+
+                for i in range(steps):
                     if training_mode:
                         model.train(memory, sess)
+                time.sleep(0.5)
 
                 # Save checkpoints every 100 games
                 if self.game_count % 100 == 0:
+                    print("\n... SAVING MODEL ... \n")
                     model.save(sess, self.game_count)
+                    time.sleep(4)
 
 

@@ -35,7 +35,7 @@ class DQN:
 
 
 			# MAX POOL
-			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 5, 5, 1], [1, 2, 2, 1], padding='SAME', name="max_pool")
+			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 4, 4, 1], [1, 2, 2, 1], padding='SAME', name="max_pool")
 
 			# CONV2
 			self.conv2 = tf.layers.conv2d(inputs=self.max_pool1,
