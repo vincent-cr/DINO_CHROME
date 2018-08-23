@@ -3,7 +3,7 @@ from collections import deque
 
 
 class Memory():
-	def __init__(self, max_size=100000, batch_size=32):
+	def __init__(self, max_size=2000, batch_size=64):
 		self.buffer = deque(maxlen=max_size)
 		self.batch_size = batch_size
 

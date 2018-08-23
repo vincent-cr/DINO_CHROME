@@ -13,7 +13,7 @@ class Processor():
 	def __init__(self):
 
 		# ROI 75% horizontal
-		self.roi_horizontal = 0.55
+		self.roi_horizontal = 0.60
 		self.roi = CG.CGRectMake(10, 140, 640 * self.roi_horizontal, 140)
 		self.seq_frames = deque(maxlen=4)
 
@@ -52,15 +52,15 @@ class Processor():
 		img_grey[img_copy > 200] = 255.
 		img_grey[img_copy < 200] = 0.
 
-		# Downsample image
-		img_resized = transform.resize(img_grey, [80, 80])
-
 		# Convert to B&W, where black gets higher values (for maxpooling)
-		img_bw = np.where(img_resized > 200, 0., 1.)
+		img_bw = np.where(img_grey > 200, 0., 1.)
+
+		# Downsample image
+		img_resized = transform.resize(img_bw, [80, 80])
 
 		# plt.imshow(img_bw, cmap=plt.cm.Greys_r)
 		# plt.show()
-		return img_bw
+		return img_resized
 
 
 	def img_stack(self, img, game):

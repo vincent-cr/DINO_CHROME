@@ -29,7 +29,7 @@ class Game():
         self.exploration_rate = 1.
         self.explore_decay = 0.997
         self.min_exploration_rate = 0.02
-        self.skip_frames = 4
+        self.skip_frames = 28
         self.episodes = 1
 
         self.is_game_over = False
@@ -62,7 +62,7 @@ class Game():
                 reward = -100
             # If jump
             elif prev_action == 1:
-                reward = -1
+                reward = -3
             # If not jump
             elif prev_action == 0:
                 reward = 1
@@ -180,7 +180,7 @@ class Game():
                             self.step += 1
 
                             # Print step summary
-                            print(action_info, "Game over: {}".format(self.is_game_over), "\t\t", round(Q[0][0], 3), "\t",  round(Q[0][1], 3), "\t\t reward: {}".format(reward))
+                            print(action_info, "Game over: {}".format(self.is_game_over), "\t\t", round(Q[0][0], 2), "\t",  round(Q[0][1], 2), "\t\t reward: {}".format(reward))
 
                             # If gameover
                             if self.is_game_over:
@@ -197,10 +197,10 @@ class Game():
 
                 # Train
                 print("\n... TRAING MODEL ... \n")
-                if self.game_count <= 70:
-                    steps = 40
-                else:
+                if self.game_count <= 80:
                     steps = 20
+                else:
+                    steps = 10
 
                 for i in range(steps):
                     if training_mode:
@@ -212,5 +212,7 @@ class Game():
                     print("\n... SAVING MODEL ... \n")
                     model.save(sess, self.game_count)
                     time.sleep(4)
+
+                    #self.exploration_rate = 0.6
 
 
