@@ -1,9 +1,10 @@
 import numpy as np
 from collections import deque
+import random
 
 
 class Memory():
-	def __init__(self, max_size=2000, batch_size=64):
+	def __init__(self, max_size=2000, batch_size=32):
 		self.buffer = deque(maxlen=max_size)
 		self.batch_size = batch_size
 
@@ -14,38 +15,65 @@ class Memory():
 		self.buffer.append(experience)
 
 
-	def add_next_state(self, next_state, episode_counter, is_game_over=False):
+	def add_next_state(self, next_state, game):
 
-		if episode_counter != 0:
+		if game.episode_frames_counter != 0:
 
-			if not is_game_over:
+			if not game.is_game_over:
 				self.buffer[-2].append(next_state)
 
-			if is_game_over:
+			if game.is_game_over:
 				self.buffer[-1].append(next_state)
 				self.buffer[-2].append(next_state)
 
 			#print(self.buffer[-2][1], self.buffer[-2][2], self.buffer[-2][3])
 
 
-	def add_reward(self, reward, is_game_over, episode_counter):
+	def add_reward(self, reward, game):
 
-		if episode_counter != 0:
+		if game.episode_frames_counter != 0:
 
-			if not is_game_over:
+			if not game.is_game_over:
 				self.buffer[-2].append(reward)
 
-			if is_game_over:
+			if game.is_game_over:
 				self.buffer[-1].append(reward)
 				self.buffer[-2].append(reward)
 
 
+	def add_step_count(self, game):
 
-	def sample(self):
+		if game.episode_frames_counter != 0:
+
+			if not game.is_game_over:
+				self.buffer[-2].append(game.episode_processed_frames_counter)
+
+			if game.is_game_over:
+				self.buffer[-1].append(game.episode_processed_frames_counter)
+				self.buffer[-2].append(game.episode_processed_frames_counter+1)
+
+
+	def sample(self, max_step):
 		batch_size = self.batch_size
 		buffer_size = len(self.buffer)
+
+		"""
+		index_low_unsampled = [i for i in range(buffer_size) if self.buffer[i][5] < (max_step/2)]
+		index_high_unsampled = [i for i in range(buffer_size) if self.buffer[i][5] >= (max_step/2)]
+
+
+
+		index_low_sampled = np.random.choice(np.array(index_low_unsampled), size=min(int(self.batch_size/2), int(buffer_size/2)), replace=True)
+		index_high_sampled = np.random.choice(np.array(index_high_unsampled), size=min(int(self.batch_size/2), int(buffer_size/2)), replace=True)
+
+		print(int(buffer_size / 2), self.batch_size / 2, buffer_size, len(index_low_unsampled), len(index_high_unsampled), len(index_low_sampled), len(index_high_sampled), max_step)
+
+		"""
 		index = np.random.choice(np.arange(buffer_size), size=min(self.batch_size, len(self.buffer)), replace=False)
+
 		# Add last 6 states before game over
 		#index = [*index, *range(-6, 0)]
+
+		#index = [*index_low_sampled, *index_high_sampled]
 
 		return [self.buffer[i] for i in index]

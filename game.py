@@ -29,13 +29,15 @@ class Game():
         self.exploration_rate = 1.
         self.explore_decay = 0.997
         self.min_exploration_rate = 0.02
-        self.skip_frames = 28
+        self.skip_frames = 24
         self.episodes = 1
 
         self.is_game_over = False
         self.episode_frames_counter = -1
+        self.episode_processed_frames_counter = -1
         self.step = 0
         self.game_count = 1
+        self.step_max_reached = 0
 
         print("Environment created...\n")
 
@@ -48,6 +50,10 @@ class Game():
         self.episode_frames_counter = -1
         self.is_game_over = False
         self.game_count += 1
+        self.episode_processed_frames_counter = -1
+
+
+
 
 
     def get_reward(self, memory):
@@ -111,7 +117,8 @@ class Game():
             action_array = self.possible_actions[action]
             action_info = "NO ACTION\t\t\t\t"
 
-        self.exploration_rate *= self.explore_decay
+        if self.exploration_rate >= self.min_exploration_rate:
+            self.exploration_rate *= self.explore_decay
 
         return action, action_array, action_info
 
@@ -170,14 +177,20 @@ class Game():
                             memory.add([state, action_array, self.is_game_over])
 
                             # Add reward to previous experience
-                            memory.add_reward(reward, self.is_game_over, self.episode_frames_counter)
+                            memory.add_reward(reward, self)
 
                             # Add state (stacked frames) as next state of previous state
-                            memory.add_next_state(state, self.episode_frames_counter, self.is_game_over)
+                            memory.add_next_state(state, self)
 
+                            # Keep in memory highest step reached
+                            self.step_max_reached = max(self.episode_processed_frames_counter, self.step_max_reached)
+
+                            # Add step in memory for replay prioritization
+                            memory.add_step_count(self)
 
                             # Update the step counter
                             self.step += 1
+                            self.episode_processed_frames_counter +=1
 
                             # Print step summary
                             print(action_info, "Game over: {}".format(self.is_game_over), "\t\t", round(Q[0][0], 2), "\t",  round(Q[0][1], 2), "\t\t reward: {}".format(reward))
@@ -197,14 +210,14 @@ class Game():
 
                 # Train
                 print("\n... TRAING MODEL ... \n")
-                if self.game_count <= 80:
+                if self.game_count <= 75:
                     steps = 20
                 else:
-                    steps = 10
+                    steps = 5
 
                 for i in range(steps):
                     if training_mode:
-                        model.train(memory, sess)
+                        model.train(memory, sess, self.step_max_reached)
                 time.sleep(0.5)
 
                 # Save checkpoints every 100 games

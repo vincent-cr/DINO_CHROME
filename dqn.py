@@ -80,10 +80,20 @@ class DQN:
 			# The loss is the difference between our predicted Q_values and the Q_target Sum(Qtarget - Q)^2
 			self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q))
 
-			self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+			#self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
+			self.optimizer = tf.train.AdamOptimizer().minimize(self.loss)
+
 
 			# Init saver
 			self.saver = tf.train.Saver()
+
+			# Setup TensorBoard Writer# Setup
+			self.writer = tf.summary.FileWriter("/Users/Vincent/PycharmProjects/IAM_dino/v2/tensorboard/")
+
+			## Losses
+			tf.summary.scalar("Loss", self.loss)
+
+			self.write_op = tf.summary.merge_all()
 
 			print("Model created...\n")
 
@@ -99,8 +109,8 @@ class DQN:
 		return action, Qs
 
 
-	def train(self, memory, sess):
-		batch = memory.sample()
+	def train(self, memory, sess, max_step):
+		batch = memory.sample(max_step)
 		states_mb = np.array([each[0] for each in batch], ndmin=3)
 		actions_mb = np.array([each[1] for each in batch])
 		is_game_over_mb = np.array([each[2] for each in batch])
@@ -131,6 +141,13 @@ class DQN:
 						   feed_dict={self.inputs_: states_mb,
 									  self.target_Q: targets_mb,
 									  self.actions_: actions_mb})
+
+		# Write TF Summaries
+		summary = sess.run(self.write_op, feed_dict={self.inputs_: states_mb,
+		                                        self.target_Q: targets_mb,
+		                                        self.actions_: actions_mb})
+		self.writer.add_summary(summary)
+		self.writer.flush()
 		print(loss)
 
 
@@ -141,7 +158,3 @@ class DQN:
 	def load(self, session, checkpoint_name):
 		self.saver.restore(session, checkpoint_name)
 		print("Model loaded:", checkpoint_name)
-
-
-
-
