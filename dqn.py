@@ -2,9 +2,9 @@ import tensorflow as tf
 import numpy as np
 from datetime import datetime
 
+
 class DQN:
 	def __init__(self, game, name='DQN'):
-		self.learning_rate = 0.0002
 		self.state_size = game.state_size
 		self.action_size = game.action_size
 		self.possible_actions = game.possible_actions
@@ -165,6 +165,7 @@ class DQN:
 		self.saver.save(session, self.dir_saved_checkpoints + "dino.ckpt", global_step=count)
 		print("...Model saved...")
 
+		
 	def load(self, session, checkpoint_name):
 		self.saver.restore(session, checkpoint_name)
 		print("Model loaded:", checkpoint_name)
