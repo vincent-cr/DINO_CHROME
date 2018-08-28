@@ -20,7 +20,6 @@ class DQN:
 			# target_Q is the R(s,a) + ymax Qhat(s', a')
 			self.target_Q = tf.placeholder(tf.float32, [None], name="target")
 
-
 			# CONV1
 			self.conv1 = tf.layers.conv2d(inputs=self.inputs_,
 										  filters=32,
@@ -31,7 +30,6 @@ class DQN:
 										  name="conv1")
 
 			self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
-
 
 			# MAX POOL
 			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 4, 4, 1], [1, 2, 2, 1], padding='SAME', name="max_pool")
@@ -46,7 +44,6 @@ class DQN:
 										  name="conv2")
 
 			self.conv2_out = tf.nn.relu(self.conv2, name="conv2_out")
-
 
 			# CONV3
 			self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
