@@ -4,7 +4,6 @@ from datetime import datetime
 
 class DQN:
 	def __init__(self, game, name='DQN'):
-		self.learning_rate = 0.0002
 		self.state_size = game.state_size
 		self.action_size = game.action_size
 		self.possible_actions = game.possible_actions
@@ -80,17 +79,15 @@ class DQN:
 			# The loss is the difference between our predicted Q_values and the Q_target Sum(Qtarget - Q)^2
 			self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q))
 
-			#self.optimizer = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
 			self.optimizer = tf.train.AdamOptimizer().minimize(self.loss)
-
 
 			# Init saver
 			self.saver = tf.train.Saver()
 
-			# Setup TensorBoard Writer# Setup
+			# Setup TensorBoard Writer
 			self.writer = tf.summary.FileWriter("/Users/Vincent/PycharmProjects/IAM_dino/v2/tensorboard/")
 
-			## Losses
+			# Losses
 			tf.summary.scalar("Loss", self.loss)
 
 			self.write_op = tf.summary.merge_all()
@@ -118,7 +115,6 @@ class DQN:
 		next_states_mb = np.array([each[4] for each in batch], ndmin=3)
 
 		target_Qs_batch = []
-
 
 		# Get Q values for next_state
 		Qs_next_state = sess.run(self.output, feed_dict={self.inputs_: next_states_mb})
@@ -155,6 +151,7 @@ class DQN:
 		self.saver.save(session, self.dir_saved_checkpoints + "dino.ckpt", global_step=count)
 		print("...Model saved...")
 
+		
 	def load(self, session, checkpoint_name):
 		self.saver.restore(session, checkpoint_name)
 		print("Model loaded:", checkpoint_name)
