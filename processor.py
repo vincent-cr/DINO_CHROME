@@ -1,18 +1,12 @@
 import Quartz.CoreGraphics as CG
 import numpy as np
-from skimage import transform
 import time
-from datetime import datetime
 from collections import deque
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import cv2
-
 
 class Processor():
 	def __init__(self):
 
-		# ROI 75% horizontal
+		# ROI 60% horizontal
 		self.roi_horizontal = 0.60
 		self.roi = CG.CGRectMake(10, 140, 640 * self.roi_horizontal, 140)
 		self.seq_frames = deque(maxlen=4)
@@ -48,7 +42,7 @@ class Processor():
 		# Evaluate if game is over
 		self.eval_game_over(img_grey, game)
 
-		# Filter out unharmfull obstacles ( light grey)
+		# Filter out unharmfull obstacles (light grey)
 		img_grey[img_copy > 200] = 255.
 		img_grey[img_copy < 200] = 0.
 
@@ -58,8 +52,6 @@ class Processor():
 		# Downsample image
 		img_resized = transform.resize(img_bw, [80, 80])
 
-		# plt.imshow(img_bw, cmap=plt.cm.Greys_r)
-		# plt.show()
 		return img_resized
 
 
