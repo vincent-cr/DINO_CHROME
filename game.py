@@ -3,13 +3,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 import Quartz.CoreGraphics as CG
 import numpy as np
-from skimage import transform
 import time
-from datetime import datetime
-from collections import deque
 import tensorflow as tf
-import matplotlib.pyplot as plt
-import cv2
 
 
 class Game():
@@ -29,7 +24,7 @@ class Game():
         self.exploration_rate = 1.
         self.explore_decay = 0.997
         self.min_exploration_rate = 0.02
-        self.skip_frames = 24
+        self.skip_frames = 28
         self.episodes = 1
 
         self.is_game_over = False
@@ -51,9 +46,8 @@ class Game():
         self.is_game_over = False
         self.game_count += 1
         self.episode_processed_frames_counter = -1
-
-
-
+        if self.exploration_rate >= self.min_exploration_rate:
+            self.exploration_rate *= self.explore_decay
 
 
     def get_reward(self, memory):
@@ -117,9 +111,6 @@ class Game():
             action_array = self.possible_actions[action]
             action_info = "NO ACTION\t\t\t\t"
 
-        if self.exploration_rate >= self.min_exploration_rate:
-            self.exploration_rate *= self.explore_decay
-
         return action, action_array, action_info
 
 
@@ -155,7 +146,7 @@ class Game():
                         # Update the frame counter (for this episode)
                         self.episode_frames_counter += 1
 
-                        # Only process and stack each 4th frame
+                        # Only process and stack each [skip_frames]th frame
                         if self.episode_frames_counter % self.skip_frames == 0:
 
                             # Process image & update is_game_over
@@ -210,14 +201,11 @@ class Game():
 
                 # Train
                 print("\n... TRAING MODEL ... \n")
-                if self.game_count <= 75:
-                    steps = 20
-                else:
-                    steps = 5
-
+                steps = 20
                 for i in range(steps):
                     if training_mode:
                         model.train(memory, sess, self.step_max_reached)
+
                 time.sleep(0.5)
 
                 # Save checkpoints every 100 games
@@ -225,7 +213,4 @@ class Game():
                     print("\n... SAVING MODEL ... \n")
                     model.save(sess, self.game_count)
                     time.sleep(4)
-
-                    #self.exploration_rate = 0.6
-
-
+                    
