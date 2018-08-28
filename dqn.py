@@ -4,6 +4,7 @@ from datetime import datetime
 
 class DQN:
 	def __init__(self, game, name='DQN'):
+		self.learning_rate = 0.0002
 		self.state_size = game.state_size
 		self.action_size = game.action_size
 		self.possible_actions = game.possible_actions
@@ -20,6 +21,7 @@ class DQN:
 			# target_Q is the R(s,a) + ymax Qhat(s', a')
 			self.target_Q = tf.placeholder(tf.float32, [None], name="target")
 
+
 			# CONV1
 			self.conv1 = tf.layers.conv2d(inputs=self.inputs_,
 										  filters=32,
@@ -32,7 +34,7 @@ class DQN:
 			self.conv1_out = tf.nn.relu(self.conv1, name="conv1_out")
 
 			# MAX POOL
-			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 4, 4, 1], [1, 2, 2, 1], padding='SAME', name="max_pool")
+			self.max_pool1 =  tf.nn.max_pool(self.conv1_out, [1, 4, 4, 1], [1, 2, 2, 1], padding='SAME', name="max_pool1")
 
 			# CONV2
 			self.conv2 = tf.layers.conv2d(inputs=self.max_pool1,
@@ -48,7 +50,7 @@ class DQN:
 			# CONV3
 			self.conv3 = tf.layers.conv2d(inputs=self.conv2_out,
 										  filters=64,
-										  kernel_size=[3, 3],
+										  kernel_size=[2, 2],
 										  strides=[1, 1],
 										  padding="VALID",
 										  kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d(),
@@ -56,22 +58,37 @@ class DQN:
 
 			self.conv3_out = tf.nn.relu(self.conv3, name="conv3_out")
 
-
 			self.flatten = tf.contrib.layers.flatten(self.conv3_out)
 
-			self.fc = tf.layers.dense(inputs=self.flatten,
+			# Dueling: Value
+			self.fc_value = tf.layers.dense(inputs=self.flatten,
 									  units=512,
 									  activation=tf.nn.relu,
 									  kernel_initializer=tf.contrib.layers.xavier_initializer(),
-									  name="fc1")
+									  name="fc_value")
 
-			self.output = tf.layers.dense(inputs=self.fc,
+			self.output_value = tf.layers.dense(inputs=self.fc_value,
+										  kernel_initializer=tf.contrib.layers.xavier_initializer(),
+										  units=1,
+										  activation=None)
+
+			# Dueling: Advantage
+			self.fc_adv = tf.layers.dense(inputs=self.flatten,
+									  units=512,
+									  activation=tf.nn.relu,
+									  kernel_initializer=tf.contrib.layers.xavier_initializer(),
+									  name="fc_adv")
+
+			self.output_adv = tf.layers.dense(inputs=self.fc_adv,
 										  kernel_initializer=tf.contrib.layers.xavier_initializer(),
 										  units=self.action_size,
 										  activation=None)
 
+			# Dueling: Advantage + Value
+			self.dueling = self.output_value + (self.output_adv - tf.reduce_mean(self.output_adv, axis=1, keepdims=True))
+
 			# Q is our predicted Q value.
-			self.Q = tf.reduce_sum(tf.multiply(self.output, self.actions_))
+			self.Q = tf.reduce_sum(tf.multiply(self.dueling, self.actions_))
 
 			# The loss is the difference between our predicted Q_values and the Q_target Sum(Qtarget - Q)^2
 			self.loss = tf.reduce_mean(tf.square(self.target_Q - self.Q))
@@ -95,7 +112,7 @@ class DQN:
 	def predict_action(self, state, sess):
 
 		# Estimate the Qs values state
-		Qs = sess.run(self.output, feed_dict={self.inputs_: state.reshape((1, *state.shape))})
+		Qs = sess.run(self.output_adv, feed_dict={self.inputs_: state.reshape((1, *state.shape))})
 
 		# Take the biggest Q value (= the best action)
 		action = np.argmax(Qs)
@@ -114,7 +131,7 @@ class DQN:
 		target_Qs_batch = []
 
 		# Get Q values for next_state
-		Qs_next_state = sess.run(self.output, feed_dict={self.inputs_: next_states_mb})
+		Qs_next_state = sess.run(self.output_adv, feed_dict={self.inputs_: next_states_mb})
 
 		# Set Q_target = r if the episode ends at s+1, otherwise set Q_target = r + gamma*maxQ(s', a')
 		for i in range(0, len(batch)):
@@ -148,7 +165,6 @@ class DQN:
 		self.saver.save(session, self.dir_saved_checkpoints + "dino.ckpt", global_step=count)
 		print("...Model saved...")
 
-		
 	def load(self, session, checkpoint_name):
 		self.saver.restore(session, checkpoint_name)
 		print("Model loaded:", checkpoint_name)
