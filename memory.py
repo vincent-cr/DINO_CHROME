@@ -26,8 +26,6 @@ class Memory():
 				self.buffer[-1].append(next_state)
 				self.buffer[-2].append(next_state)
 
-			#print(self.buffer[-2][1], self.buffer[-2][2], self.buffer[-2][3])
-
 
 	def add_reward(self, reward, game):
 
@@ -57,23 +55,14 @@ class Memory():
 		batch_size = self.batch_size
 		buffer_size = len(self.buffer)
 
-		"""
 		index_low_unsampled = [i for i in range(buffer_size) if self.buffer[i][5] < (max_step/2)]
 		index_high_unsampled = [i for i in range(buffer_size) if self.buffer[i][5] >= (max_step/2)]
-
-
 
 		index_low_sampled = np.random.choice(np.array(index_low_unsampled), size=min(int(self.batch_size/2), int(buffer_size/2)), replace=True)
 		index_high_sampled = np.random.choice(np.array(index_high_unsampled), size=min(int(self.batch_size/2), int(buffer_size/2)), replace=True)
 
 		print(int(buffer_size / 2), self.batch_size / 2, buffer_size, len(index_low_unsampled), len(index_high_unsampled), len(index_low_sampled), len(index_high_sampled), max_step)
 
-		"""
-		index = np.random.choice(np.arange(buffer_size), size=min(self.batch_size, len(self.buffer)), replace=False)
-
-		# Add last 6 states before game over
-		#index = [*index, *range(-6, 0)]
-
-		#index = [*index_low_sampled, *index_high_sampled]
+		index = [*index_low_sampled, *index_high_sampled]
 
 		return [self.buffer[i] for i in index]
